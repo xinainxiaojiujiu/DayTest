@@ -1,0 +1,155 @@
+# ============================================
+# 汽车涂装不良品智能分析系统 - 完整运行日志
+# ============================================
+# 日期: 2026-05-06
+# 环境: 生产环境 | Python 3.11 | FastAPI 0.104.1
+# LLM平台: 阿里云百炼 (qwen-max)
+# ============================================
+
+# ============================================
+# [系统启动]
+# ============================================
+[2026-05-06 07:58:30] INFO  | main | 正在初始化系统组件...
+[2026-05-06 07:58:31] INFO  | mysql_crud | MySQL连接池初始化 | pool_size=10
+[2026-05-06 07:58:32] INFO  | influx_crud | InfluxDB客户端初始化 | url=http://127.0.0.1:8086
+[2026-05-06 07:58:33] INFO  | vector_db | ChromaDB连接建立 | host=127.0.0.1:8000
+[2026-05-06 07:58:34] INFO  | mes_connector | MES连接器初始化 | url=http://mes.internal/api/v1
+[2026-05-06 07:58:35] INFO  | robot_connector | 安川机器人连接器初始化 | host=192.168.1.100
+[2026-05-06 07:58:36] INFO  | sensor_connector | Modbus传感器连接器初始化 | host=192.168.1.200
+[2026-05-06 07:58:37] INFO  | llm_client | LLM客户端初始化完成 | platform=dashscope | model=qwen-max
+[2026-05-06 07:58:38] INFO  | mysql_crud | 数据库表初始化完成 | tables=6
+[2026-05-06 07:58:39] INFO  | main | AutomotiveCoatingDefectAnalysis 启动完成 | debug=False | llm_platform=dashscope
+[2026-05-06 07:58:39] INFO  | main | API服务已启动 | port=8000 | workers=1
+
+# ============================================
+# [分析任务1: DEF-2026-0506001 - 缩孔缺陷]
+# ============================================
+[2026-05-06 08:15:23] INFO  | main | 收到全链路分析请求 | defect_id=DEF-2026-0506001 | source=API
+
+[阶段1: 数据采集]
+[2026-05-06 08:15:23] INFO  | data_agent | 数据采集开始 | defect_id=DEF-2026-0506001
+[2026-05-06 08:15:24] INFO  | mes_connector | MES API调用 | endpoint=/defects/DEF-2026-0506001/product-info
+[2026-05-06 08:15:25] INFO  | mes_connector | MES产品信息获取成功 | product_model=轩逸-2026款 | line_id=LINE-A03 | timestamp=2026-05-06 08:10:15
+[2026-05-06 08:15:26] INFO  | robot_connector | 机器人参数读取 | param=VOLTAGE | value=72.5kV
+[2026-05-06 08:15:27] INFO  | robot_connector | 机器人参数读取 | param=ATOM_PRESS | value=0.42MPa
+[2026-05-06 08:15:28] INFO  | robot_connector | 机器人工艺参数采集完成 | total_params=8 | success=8
+[2026-05-06 08:15:29] INFO  | sensor_connector | 传感器时序数据采集 | window=300s | interval=5s
+[2026-05-06 08:15:32] INFO  | sensor_connector | 传感器数据采集完成 | points=60 | temp_avg=25.3°C | humidity_avg=65.2%
+[2026-05-06 08:15:33] INFO  | data_agent | 数据清洗完成 | defect_id=DEF-2026-0506001
+[2026-05-06 08:15:34] INFO  | mysql_crud | 预处理数据保存成功 | defect_id=DEF-2026-0506001
+
+[阶段2: 语义解析]
+[2026-05-06 08:15:35] INFO  | semantic_agent | 语义解析开始 | defect_id=DEF-2026-0506001
+[2026-05-06 08:15:36] INFO  | vector_db | 相似案例检索 | query=表面出现针状小孔 缩孔缺陷 | top_k=5
+[2026-05-06 08:15:38] INFO  | vector_db | 相似案例检索完成 | results=3 | similarity=0.85
+[2026-05-06 08:15:39] INFO  | llm_client | LLM请求发送 | agent=SemanticAgent | tokens=128 prompt
+[2026-05-06 08:15:43] INFO  | llm_client | LLM响应接收 | agent=SemanticAgent | tokens=256 completion | latency=4200ms
+[2026-05-06 08:15:44] INFO  | semantic_agent | 语义解析完成 | defect_type=缩孔 | defect_category=外观缺陷 | severity=high | confidence=0.87
+[2026-05-06 08:15:45] INFO  | mysql_crud | 语义标签保存成功 | defect_id=DEF-2026-0506001
+
+[阶段3: 根因推理]
+[2026-05-06 08:15:46] INFO  | root_cause_agent | 根因推理开始 | defect_id=DEF-2026-0506001
+[2026-05-06 08:15:47] INFO  | root_cause_agent | SOP违规检测 | checking=8项工艺参数
+[2026-05-06 08:15:48] WARN  | root_cause_agent | SOP违规检测到 | param=雾化压力 | value=0.42MPa | sop_range=0.35-0.40MPa | deviation=偏高
+[2026-05-06 08:15:49] WARN  | root_cause_agent | SOP违规检测到 | param=枪距 | value=225mm | sop_range=200-220mm | deviation=偏高
+[2026-05-06 08:15:50] INFO  | root_cause_agent | SOP违规检测完成 | violations=2 | total=8
+[2026-05-06 08:15:51] INFO  | llm_client | LLM请求发送 | agent=RootCauseAgent | tokens=256 prompt
+[2026-05-06 08:15:59] INFO  | llm_client | LLM响应接收 | agent=RootCauseAgent | tokens=512 completion | latency=8100ms
+[2026-05-06 08:16:00] INFO  | root_cause_agent | 根因推理完成 | top_causes=3
+[2026-05-06 08:16:00] INFO  | root_cause_agent | 根因1 | dimension=机 | weight=0.75 | cause=雾化压力过高导致涂料雾化过度
+[2026-05-06 08:16:01] INFO  | root_cause_agent | 根因2 | dimension=法 | weight=0.15 | cause=枪距超出标准范围
+[2026-05-06 08:16:01] INFO  | root_cause_agent | 根因3 | dimension=料 | weight=0.10 | cause=涂料粘度可能偏低
+[2026-05-06 08:16:02] INFO  | mysql_crud | 根因结果保存成功 | defect_id=DEF-2026-0506001
+
+[阶段4: 方案生成]
+[2026-05-06 08:16:03] INFO  | solution_agent | 方案生成开始 | defect_id=DEF-2026-0506001
+[2026-05-06 08:16:04] INFO  | vector_db | 历史方案检索 | defect_type=缩孔 | top_k=3
+[2026-05-06 08:16:06] INFO  | llm_client | LLM请求发送 | agent=SolutionAgent | tokens=192 prompt
+[2026-05-06 08:16:14] INFO  | llm_client | LLM响应接收 | agent=SolutionAgent | tokens=384 completion | latency=7800ms
+[2026-05-06 08:16:15] INFO  | solution_agent | 方案生成完成 | solutions=4
+[2026-05-06 08:16:15] INFO  | solution_agent | 方案1 | priority=high | action=调整雾化压力至0.38MPa | responsible=工艺工程师
+[2026-05-06 08:16:15] INFO  | solution_agent | 方案2 | priority=high | action=调整枪距至210mm | responsible=设备维护
+[2026-05-06 08:16:16] INFO  | solution_agent | 方案3 | priority=medium | action=检测涂料粘度并调整 | responsible=质检人员
+[2026-05-06 08:16:16] INFO  | solution_agent | 方案4 | priority=low | action=增加雾化压力监控告警 | responsible=IT部门
+[2026-05-06 08:16:17] INFO  | mysql_crud | 方案结果保存成功 | defect_id=DEF-2026-0506001
+
+[阶段5: 闭环验证]
+[2026-05-06 08:16:18] INFO  | closed_loop_agent | 闭环验证开始 | defect_id=DEF-2026-0506001
+[2026-05-06 08:16:19] INFO  | llm_client | LLM请求发送 | agent=ClosedLoopAgent | tokens=128 prompt
+[2026-05-06 08:16:22] INFO  | llm_client | LLM响应接收 | agent=ClosedLoopAgent | tokens=192 completion | latency=3200ms
+[2026-05-06 08:16:23] INFO  | closed_loop_agent | 有效性评估完成 | score=0.85 | threshold=0.7
+[2026-05-06 08:16:24] INFO  | closed_loop_agent | 案例沉淀触发 | effectiveness_score=0.85 >= 0.7
+[2026-05-06 08:16:25] INFO  | vector_db | 文档添加 | doc_id=DEF-2026-0506001 | content_len=256
+[2026-05-06 08:16:26] INFO  | mysql_crud | 闭环结果保存成功 | defect_id=DEF-2026-0506001
+
+[分析完成]
+[2026-05-06 08:16:27] INFO  | main | 全链路分析完成 | defect_id=DEF-2026-0506001 | duration=1分4秒 | success=True
+[2026-05-06 08:16:27] INFO  | main | 分析结果返回 | defect_type=缩孔 | root_causes=3 | solutions=4
+
+# ============================================
+# [分析任务2: DEF-2026-0506002 - 橘皮缺陷]
+# ============================================
+[2026-05-06 08:30:45] INFO  | main | 收到全链路分析请求 | defect_id=DEF-2026-0506002
+[2026-05-06 08:30:45] INFO  | data_agent | 数据采集开始 | defect_id=DEF-2026-0506002
+[2026-05-06 08:30:48] WARN  | mes_connector | MES服务暂时不可用，使用模拟数据
+[2026-05-06 08:30:52] INFO  | data_agent | 数据采集完成（部分模拟） | defect_id=DEF-2026-0506002
+[2026-05-06 08:30:53] INFO  | semantic_agent | 语义解析开始 | defect_id=DEF-2026-0506002
+[2026-05-06 08:31:00] INFO  | semantic_agent | 语义解析完成 | defect_type=橘皮 | severity=medium | confidence=0.82
+[2026-05-06 08:31:01] INFO  | root_cause_agent | 根因推理开始 | defect_id=DEF-2026-0506002
+[2026-05-06 08:31:12] INFO  | root_cause_agent | 根因推理完成 | root_causes=3
+[2026-05-06 08:31:13] INFO  | solution_agent | 方案生成开始 | defect_id=DEF-2026-0506002
+[2026-05-06 08:31:22] INFO  | solution_agent | 方案生成完成 | solutions=3
+[2026-05-06 08:31:23] INFO  | closed_loop_agent | 闭环验证开始 | defect_id=DEF-2026-0506002
+[2026-05-06 08:31:27] INFO  | closed_loop_agent | 有效性评估完成 | score=0.78 | knowledge_updated=True
+[2026-05-06 08:31:28] INFO  | main | 全链路分析完成 | defect_id=DEF-2026-0506002 | duration=43秒
+
+# ============================================
+# [分析任务3: DEF-2026-0506003 - 流挂缺陷]
+# ============================================
+[2026-05-06 09:05:12] INFO  | main | 收到根因分析请求 | defect_id=DEF-2026-0506003
+[2026-05-06 09:05:12] INFO  | data_agent | 数据采集开始 | defect_id=DEF-2026-0506003
+[2026-05-06 09:05:18] INFO  | data_agent | 数据采集完成 | defect_id=DEF-2026-0506003
+[2026-05-06 09:05:19] INFO  | semantic_agent | 语义解析开始 | defect_id=DEF-2026-0506003
+[2026-05-06 09:05:25] INFO  | semantic_agent | 语义解析完成 | defect_type=流挂 | severity=high | confidence=0.91
+[2026-05-06 09:05:26] INFO  | root_cause_agent | 根因推理开始 | defect_id=DEF-2026-0506003
+[2026-05-06 09:05:38] INFO  | root_cause_agent | 根因推理完成 | root_causes=2
+[2026-05-06 09:05:39] INFO  | main | 根因分析完成 | defect_id=DEF-2026-0506003 | duration=27秒
+
+# ============================================
+# [LLM调用失败与重试示例]
+# ============================================
+[2026-05-06 10:22:33] INFO  | llm_client | LLM请求发送 | agent=SemanticAgent | tokens=128 prompt
+[2026-05-06 10:22:45] ERROR | llm_client | LLM调用失败 | request_id=xxx | error=TimeoutError | retry=1/3
+[2026-05-06 10:22:47] INFO  | llm_client | 等待重试 | delay=2.0s
+[2026-05-06 10:22:49] INFO  | llm_client | LLM请求发送 | agent=SemanticAgent | tokens=128 prompt
+[2026-05-06 10:22:55] INFO  | llm_client | LLM响应接收 | agent=SemanticAgent | tokens=256 completion | latency=6100ms
+[2026-05-06 10:22:55] INFO  | llm_client | 重试成功 | attempt=2
+
+# ============================================
+# [Token消耗统计 - 当日汇总]
+# ============================================
+[2026-05-06 23:59:59] INFO  | mysql_crud | Token消耗统计查询 | date=2026-05-06
+[2026-05-06 23:59:59] INFO  | mysql_crud | SemanticAgent | requests=156 | prompt_tokens=19968 | completion_tokens=40320 | avg_latency=4200ms
+[2026-05-06 23:59:59] INFO  | mysql_crud | RootCauseAgent | requests=148 | prompt_tokens=37888 | completion_tokens=75776 | avg_latency=8100ms
+[2026-05-06 23:59:59] INFO  | mysql_crud | SolutionAgent | requests=145 | prompt_tokens=28160 | completion_tokens=55680 | avg_latency=7200ms
+[2026-05-06 23:59:59] INFO  | mysql_crud | ClosedLoopAgent | requests=142 | prompt_tokens=18176 | completion_tokens=27264 | avg_latency=3100ms
+[2026-05-06 23:59:59] INFO  | main | 当日统计汇总 | total_requests=591 | total_tokens=273168 | avg_latency=5650ms
+
+# ============================================
+# [知识库统计]
+# ============================================
+[2026-05-06 23:59:59] INFO  | vector_db | 知识库统计 | total_docs=1247 | today_added=38 | collection=process_knowledge
+
+# ============================================
+# [系统关闭]
+# ============================================
+[2026-05-07 00:00:00] INFO  | main | 收到关闭信号，正在关闭系统...
+[2026-05-07 00:00:01] INFO  | mes_connector | 连接关闭
+[2026-05-07 00:00:01] INFO  | robot_connector | 连接关闭
+[2026-05-07 00:00:02] INFO  | sensor_connector | 连接关闭
+[2026-05-07 00:00:02] INFO  | influx_crud | 客户端关闭
+[2026-05-07 00:00:03] INFO  | main | AutomotiveCoatingDefectAnalysis 已关闭
+
+# ============================================
+# 运行日志结束
+# ============================================
