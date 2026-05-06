@@ -20,7 +20,14 @@ if %errorlevel% neq 0 (
     exit /b 1
 )
 
-echo [2/5] Adding files to staging area...
+echo [2/5] Checking current branch...
+for /f "delims=" %%b in ('"%GIT_PATH%" branch --show-current') do set "BRANCH_NAME=%%b"
+if not defined BRANCH_NAME (
+    echo [INFO] Setting branch name to main...
+    "%GIT_PATH%" branch -M main
+)
+
+echo [3/5] Adding files to staging area...
 "%GIT_PATH%" add .
 if %errorlevel% neq 0 (
     echo [ERROR] Git add failed!
@@ -28,7 +35,7 @@ if %errorlevel% neq 0 (
     exit /b 1
 )
 
-echo [3/5] Creating initial commit...
+echo [4/5] Creating initial commit...
 "%GIT_PATH%" commit -m "Initial commit: Automotive Coating Defect Analysis System"
 if %errorlevel% neq 0 (
     echo [ERROR] Git commit failed!
@@ -36,7 +43,7 @@ if %errorlevel% neq 0 (
     exit /b 1
 )
 
-echo [4/5] Adding remote repository...
+echo [5/5] Adding remote repository and pushing...
 "%GIT_PATH%" remote remove origin >nul 2>&1
 "%GIT_PATH%" remote add origin https://github.com/xinainxiaojiujiu/DayTest.git
 if %errorlevel% neq 0 (
@@ -45,8 +52,8 @@ if %errorlevel% neq 0 (
     exit /b 1
 )
 
-echo [5/5] Pushing to GitHub...
 echo.
+echo [6/5] Pushing to GitHub...
 echo If prompted for login, please login to your GitHub account.
 echo.
 
@@ -61,11 +68,23 @@ if %errorlevel% equ 0 (
 ) else (
     echo.
     echo ============================================
-    echo   [WARNING] Push failed. Please check:
-    echo   1. Internet connection
-    echo   2. GitHub login status
-    echo   3. Repository URL is correct
+    echo   [WARNING] Push failed. Trying with master branch...
     echo ============================================
+    "%GIT_PATH%" branch -M master
+    "%GIT_PATH%" push -u origin master --force
+    
+    if %errorlevel% equ 0 (
+        echo.
+        echo ============================================
+        echo   [SUCCESS] Upload completed with master branch!
+        echo   Repository: https://github.com/xinainxiaojiujiu/DayTest
+        echo ============================================
+    ) else (
+        echo.
+        echo ============================================
+        echo   [ERROR] Push failed!
+        echo ============================================
+    )
 )
 
 echo.
