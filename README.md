@@ -102,8 +102,4 @@ src/
 
 MIT License
 
-## 联系方式
 
-如有问题或合作意向，请通过以下方式联系：
-- 项目地址: https://github.com/example/coating-defect-analysis
-- 在线演示: https://demo.example.com/
